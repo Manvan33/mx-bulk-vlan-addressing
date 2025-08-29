@@ -1,0 +1,2 @@
+# This file ensures the spreadsheets directory is tracked by Git
+# The actual spreadsheet files are ignored by .gitignore

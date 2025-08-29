@@ -15,3 +15,7 @@ wheels/
 # Output directory contents (keep structure, ignore generated files)
 output/logs/*
 output/spreadsheets/*
+
+# keep gitkeep
+!.gitkeep
+
