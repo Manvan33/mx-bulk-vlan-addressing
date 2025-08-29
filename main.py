@@ -185,12 +185,12 @@ def import_from_dashboard(org_id):
     df = pd.DataFrame(vlan_data)
     
     # Ensure output directory exists
-    os.makedirs("output/exports", exist_ok=True)
+    os.makedirs("output/spreadsheets", exist_ok=True)
     
     # Generate filename with timestamp
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"output/exports/meraki_vlan_export_{org_id}_{timestamp}.xlsx"
+    filename = f"output/spreadsheets/meraki_vlan_export_{org_id}_{timestamp}.xlsx"
     
     # Save to Excel file
     df.to_excel(filename, index=False)

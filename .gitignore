@@ -13,17 +13,5 @@ wheels/
 .env
 
 # Output directory contents (keep structure, ignore generated files)
-output/logs/*.log
-output/exports/*.xlsx
-output/exports/*.csv
-
-# Legacy files in root (for backwards compatibility)
-meraki_api__log__*.log
-*.xlsx
-~$*.xlsx
-*.csv
-
-# SSL certificates (if generated)
-*.pem
-*.crt
-*.key
+output/logs/*
+output/spreadsheets/*
