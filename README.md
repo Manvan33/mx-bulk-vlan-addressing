@@ -1,22 +1,18 @@
-# MX Templates Bulk Addressing
+# MX Bulk VLAN Addressing
 
-A comprehensive Python tool for managing Cisco Meraki MX VLAN configurations through Excel import/export functionality. Supports both API key and OAuth authentication methods.
-
-## Features
-
-- **Export VLAN configurations** from Meraki dashboard to Excel format
-- **Validate Excel files** for proper VLAN configuration format
-- **Multiple authentication methods**: API key and OAuth 2.0
-- **HTTPS OAuth callback server** with beautiful web interface
-- **Comprehensive validation**: Network names, VLAN IDs, IP addresses, and CIDR notation
-- **Command-line interface** for easy automation
+A comprehensive Python script for managing Cisco Meraki MX VLAN configurations through Excel import/export functionality.
 
 ## Use Cases
 
-1. **Audit existing networks**: Export current VLAN configurations to Excel for review
-2. **Configuration validation**: Verify Excel files before applying changes
-3. **Bulk configuration preparation**: Use exported data as template for new deployments
-4. **Documentation**: Generate Excel reports of network VLAN configurations
+- Export VLAN configurations from Meraki dashboard to an Excel file
+- Validate Excel files for proper VLAN configuration format
+- Apply VLAN configurations from Excel to the Meraki dashboard
+
+## Limitations
+
+- The script only supports addition. Deleting networks and VLANs should be done via the Meraki dashboard.
+- Networks are indexed by their names. Renaming a network in Excel and then applying to dashboard will create a new network, leaving the old one intact.
+- VLANs are indexed by their IDs. Modifying a VLAN ID in Excel will create a new VLAN instead of updating the existing one.
 
 ## Setup
 
@@ -27,56 +23,85 @@ A comprehensive Python tool for managing Cisco Meraki MX VLAN configurations thr
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/mx-templates-bulk-addressing.git
-cd mx-templates-bulk-addressing
-```
+#### 1. Clone the repository:
 
-2. Install with uv (recommended):
 ```bash
-uv sync
+git clone https://github.com/Manvan33/mx-bulk-vlan-addressinggit
+cd mx-bulk-vlan-addressing
 ```
+#### 2. Install packages with pip:
 
-Or with pip:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Set up authentication:
+#### 3. Set up authentication:
 
 **Option A: API Key (simpler)**
+
 ```bash
 cp .env.example .env
-# Edit .env and add your MERAKI_API_KEY
 ```
+Edit .env and add your MERAKI_API_KEY
 
 **Option B: OAuth (more secure)**
-- Set up OAuth application in Meraki dashboard
-- Use the built-in OAuth flow with `--oauth` flag
+- Set up an OAuth application on https://integrate.cisco.com
+- Edit `.env` to include your client ID and client secret
+- Uncomment a line in main.py to use OAuth
 
 ## Usage
 
-### Export VLAN Configuration from Dashboard
+```
+usage: main.py [-h] --org ORG {check-api,validate-excel,apply-from-excel,export-to-excel,create-networks,create-vlans} ...
 
-```bash
-# Using API key authentication
-uv run main.py --import-dashboard YOUR_ORG_ID
+Meraki MX VLAN Configuration Tool
 
-# Using OAuth authentication
-uv run main.py --import-dashboard YOUR_ORG_ID --oauth
+positional arguments:
+  {check-api,validate-excel,apply-from-excel,export-to-excel,create-networks,create-vlans}
+                        Available commands
+    check-api           Check Meraki API connectivity
+    validate-excel      Validate Excel file format and data
+    apply-from-excel    Apply VLAN configuration from Excel to Dashboard
+    export-to-excel     Export VLAN configuration from Dashboard to Excel
+    create-networks     Create networks
+    create-vlans        Create VLANs
+
+options:
+  -h, --help            show this help message and exit
+  --org ORG             Organization ID
 ```
 
-### Validate Excel File Format
+### Example Usage
+
+1. First generate a spreadsheet of your existing configuration using the `export-to-excel` command:
 
 ```bash
-uv run main.py --check-excel your_file.xlsx
+python main.py --org <your_org_id> export-to-excel
 ```
 
-### List Organizations
+2. Modify the Excel file as needed to reflect your desired VLAN configuration.
+
+- You can delete lines for networks/VLANs you don't want to modify.
+- You can add VLANs and networks
+- You can rename VLANs, modify subnets and MX IPs.
+
+3. Verify the Excel file.
 
 ```bash
-uv run main.py --init-sdk
+python main.py --org <your_org_id> validate-excel --file <path_to_your_excel_file>
+```
+
+4. Create networks and VLANs from the modified Excel file.
+
+```bash
+python main.py --org <your_org_id> create-networks --file <path_to_your_excel_file>
+python main.py --org <your_org_id> create-vlans --file <path_to_your_excel_file>
+```
+
+5. Apply the addressing configuration from the modified Excel file.
+
+```bash
+python main.py --org <your_org_id> apply-from-excel --file <path_to_your_excel_file>
 ```
 
 ## Excel File Format
@@ -89,6 +114,8 @@ The tool exports and validates Excel files with this structure:
 | Site-A | 20 | Guest | 192.168.20.0/24 | 192.168.20.1 |
 | Site-B | 10 | Data | 192.168.30.0/24 | 192.168.30.1 |
 
+You can create new columns as needed, they will be ignored. Don't rename the existing columns.
+
 ### Validation Rules
 
 - **Network Name**: Letters, numbers, spaces, and characters: `. @ # _ -`
@@ -96,45 +123,6 @@ The tool exports and validates Excel files with this structure:
 - **VLAN Name**: Letters, numbers, spaces, and characters: `. @ # _ -`
 - **Subnet**: Valid CIDR notation (e.g., `192.168.1.0/24`)
 - **MX IP**: Valid IP address that belongs to the specified subnet
-
-## Authentication Methods
-
-### API Key Authentication
-
-1. Create `.env` file:
-```bash
-MERAKI_API_KEY=your_api_key_here
-```
-
-2. Generate API key in Meraki Dashboard:
-   - Organization > Settings > Dashboard API access
-   - Generate new API key
-
-### OAuth Authentication
-
-1. Set up OAuth application in Meraki Dashboard
-2. Use the `--oauth` flag to trigger OAuth flow
-3. Built-in HTTPS server handles the callback automatically
-
-## Project Structure
-
-```
-├── main.py                    # Main CLI application
-├── src/
-│   ├── meraki_api_auth.py    # Authentication classes
-├── oauth_callback_flask.py   # OAuth HTTPS callback server
-├── requirements.txt          # Dependencies
-├── pyproject.toml           # Project configuration
-└── README.md                # This file
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
