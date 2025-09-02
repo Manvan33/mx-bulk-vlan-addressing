@@ -551,7 +551,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mx-templates-bulk-addressing"
+name = "mx-bulk-vlan-addressing"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

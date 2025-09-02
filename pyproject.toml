@@ -1,5 +1,5 @@
 [project]
-name = "mx-templates-bulk-addressing"
+name = "mx-bulk-vlan-addressing"
 version = "0.1.0"
 description = "Python tool for automating Cisco Meraki MX VLAN configurations using Excel for IP addressing"
 readme = "README.md"
