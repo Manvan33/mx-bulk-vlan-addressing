@@ -259,68 +259,69 @@ def validate_excel_data(org_id, excel_data):
     try:
         # Get all networks in the organization
         networks = dashboard.organizations.getOrganizationNetworks(org_id)
-        
         # Create a mapping of network names to IDs
         network_map = {net['name']: net['id'] for net in networks}
-        
         # Get unique network names from Excel data
         excel_networks = excel_data['Network Name'].unique()
-        
         # Check which networks exist
         existing_networks = {}
         missing_networks = []
         vlan_validation = []
-        
         for network_name in excel_networks:
             if network_name in network_map:
                 existing_networks[network_name] = network_map[network_name]
             else:
                 missing_networks.append(network_name)
-        
         # Report network findings
         if existing_networks:
             print(f"✅ Found {len(existing_networks)} existing networks")
             for name in existing_networks.keys():
                 print(f"   - {name}")
-        
         if missing_networks:
             print(f"⚠️  {len(missing_networks)} networks not found in organization:")
             for name in missing_networks:
                 print(f"   - {name}")
-        
-        # Now validate VLANs for existing networks
+        # VLAN validation: only for existing networks
         print(f"\nValidating VLANs in existing networks...")
         valid_vlans = 0
         invalid_vlans = 0
-        
+        if not existing_networks:
+            print("No existing networks found. Skipping VLAN validation.")
+            network_validation = []
+            for network_name in excel_networks:
+                network_validation.append({
+                    'name': network_name,
+                    'id': '',
+                    'exists': False
+                })
+            summary = {
+                'networks_found': 0,
+                'networks_missing': len(missing_networks),
+                'vlans_valid': 0,
+                'vlans_invalid': 0,
+                'total_networks': len(excel_networks),
+                'total_vlans': len(excel_data)
+            }
+            return {
+                'networks': {},
+                'network_validation': network_validation,
+                'vlan_validation': [],
+                'summary': summary
+            }
+        # Only validate VLANs for existing networks
         for network_name, network_data in excel_data.groupby('Network Name'):
             if network_name not in existing_networks:
-                # Skip VLAN validation for missing networks
-                for _, row in network_data.iterrows():
-                    vlan_validation.append({
-                        'network_name': network_name,
-                        'vlan_id': row['VLAN ID'],
-                        'vlan_name': row['VLAN Name'],
-                        'status': 'network_missing',
-                        'message': f"Network '{network_name}' does not exist"
-                    })
-                    invalid_vlans += 1
-                continue
-            
+                continue  # Skip VLAN validation for missing networks
             network_id = existing_networks[network_name]
-            
             try:
                 # Get existing VLANs for this network
                 existing_vlans = dashboard.appliance.getNetworkApplianceVlans(network_id)
                 existing_vlan_ids = {str(vlan['id']): vlan for vlan in existing_vlans}
-                
                 print(f"   {network_name}: Found {len(existing_vlans)} existing VLANs")
-                
                 # Check each VLAN from Excel
                 for _, row in network_data.iterrows():
                     vlan_id = str(row['VLAN ID'])
                     vlan_name = str(row['VLAN Name']).strip()
-                    
                     if vlan_id in existing_vlan_ids:
                         existing_vlan = existing_vlan_ids[vlan_id]
                         vlan_validation.append({
@@ -332,7 +333,7 @@ def validate_excel_data(org_id, excel_data):
                             'current_config': existing_vlan
                         })
                         valid_vlans += 1
-                        print(f"      ✅ VLAN {vlan_id} ({vlan_name}) - exists")
+                        print(f"      ✅ VLAN {vlan_id} - exists")
                     else:
                         vlan_validation.append({
                             'network_name': network_name,
@@ -343,7 +344,6 @@ def validate_excel_data(org_id, excel_data):
                         })
                         invalid_vlans += 1
                         print(f"      ❌ VLAN {vlan_id} ({vlan_name}) - does not exist")
-                        
             except Exception as e:
                 print(f"   ⚠️  Could not retrieve VLANs for network {network_name}: {str(e)}")
                 # Mark all VLANs for this network as validation failed
@@ -356,7 +356,6 @@ def validate_excel_data(org_id, excel_data):
                         'message': f"Could not validate VLAN: {str(e)}"
                     })
                     invalid_vlans += 1
-        
         # Create network validation details
         network_validation = []
         for network_name in excel_networks:
@@ -365,7 +364,6 @@ def validate_excel_data(org_id, excel_data):
                 'id': existing_networks.get(network_name, ''),
                 'exists': network_name in existing_networks
             })
-        
         # Summary
         summary = {
             'networks_found': len(existing_networks),
@@ -375,14 +373,12 @@ def validate_excel_data(org_id, excel_data):
             'total_networks': len(excel_networks),
             'total_vlans': len(excel_data)
         }
-        
         return {
             'networks': existing_networks,
             'network_validation': network_validation,
             'vlan_validation': vlan_validation,
             'summary': summary
         }
-        
     except Exception as e:
         print(f"Error validating networks and VLANs: {str(e)}")
         return {
@@ -752,28 +748,9 @@ def main():
         summary = validation_results['summary']
         print(f"Networks - Total: {summary['total_networks']}, Found: {summary['networks_found']}, Missing: {summary['networks_missing']}")
         print(f"VLANs - Total: {summary['total_vlans']}, Valid: {summary['vlans_valid']}, Invalid: {summary['vlans_invalid']}")
-        print(f"\nNetwork Validation:")
-        for network in validation_results['network_validation']:
-            status = "✅" if network['exists'] else "❌"
-            print(f"  {status} {network['name']} ({network['id']})")
-        print(f"\nVLAN Validation:")
         vlan_counts = {'existing': 0, 'missing': 0, 'validation_error': 0, 'network_missing': 0}
         for vlan in validation_results['vlan_validation']:
-            status_icons = {
-                'existing': '✅',
-                'missing': '❌',
-                'validation_error': '⚠️',
-                'network_missing': '🚫'
-            }
-            icon = status_icons.get(vlan['status'], '❓')
             vlan_counts[vlan['status']] += 1
-            if vlan['status'] != 'existing':
-                print(f"  {icon} Network: {vlan['network_name']}, VLAN: {vlan['vlan_name']} (ID: {vlan['vlan_id']}) - {vlan.get('message', vlan['status'])}")
-        print(f"\nVLAN Status Summary:")
-        print(f"  ✅ Existing: {vlan_counts['existing']}")
-        print(f"  ❌ Missing: {vlan_counts['missing']}")
-        print(f"  ⚠️ Validation Errors: {vlan_counts['validation_error']}")
-        print(f"  🚫 Network Missing: {vlan_counts['network_missing']}")
         print(f"\nRecommendations:")
         if 'create_networks' in validation_result['actions_needed']:
             print(f"  - Create {summary['networks_missing']} missing networks using 'create-networks'")
