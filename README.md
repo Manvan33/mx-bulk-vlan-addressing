@@ -29,9 +29,11 @@ A comprehensive Python script for managing Cisco Meraki MX VLAN configurations t
 git clone https://github.com/Manvan33/mx-bulk-vlan-addressinggit
 cd mx-bulk-vlan-addressing
 ```
-#### 2. Install packages with pip:
+#### 2. Create a virtual environment and install packages with pip:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -72,6 +74,12 @@ options:
 ```
 
 ### Example Usage
+
+0. Verify that your API key has access to your organization.
+
+```bash
+python main.py --org <your_org_id> check-api
+```
 
 1. First generate a spreadsheet of your existing configuration using the `export-to-excel` command:
 
